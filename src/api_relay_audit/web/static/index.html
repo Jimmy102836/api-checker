@@ -339,6 +339,26 @@ async function startAudit() {
   }
 }
 
+function updateCheckItem(id, passed, score, level) {
+  const icon = document.getElementById('check-icon-' + id);
+  const status = document.getElementById('check-status-' + id);
+  const item = document.getElementById('check-' + id);
+  if (!icon || !status || !item) return;
+  if (passed === null) {
+    icon.textContent = '⏳';
+    status.textContent = '检测中...';
+    item.className = 'check-item';
+  } else if (passed) {
+    icon.textContent = '✅';
+    status.textContent = score + '分 · 通过';
+    item.className = 'check-item passed';
+  } else {
+    icon.textContent = level === 'high' ? '🔴' : level === 'medium' ? '⚠️' : '⚠️';
+    status.textContent = score + '分 · ' + (level === 'high' ? '高风险' : level === 'medium' ? '中等' : '低风险');
+    item.className = 'check-item ' + (level === 'high' ? 'failed-high' : level === 'medium' ? 'failed-med' : 'failed-low');
+  }
+}
+
 async function pollStatus(sessionId) {
   showStatus('正在启动各检测项...');
   // Show checklist, hide form
@@ -434,26 +454,6 @@ function showResults(data) {
       <div class="check-status" id="check-status-${id}">检测中...</div>
     </div>
   `).join('');
-
-  function updateCheckItem(id, passed, score, level) {
-    const icon = document.getElementById('check-icon-' + id);
-    const status = document.getElementById('check-status-' + id);
-    const item = document.getElementById('check-' + id);
-    if (!icon || !status || !item) return;
-    if (passed === null) {
-      icon.textContent = '⏳';
-      status.textContent = '检测中...';
-      item.className = 'check-item';
-    } else if (passed) {
-      icon.textContent = '✅';
-      status.textContent = score + '分 · 通过';
-      item.className = 'check-item passed';
-    } else {
-      icon.textContent = level === 'high' ? '🔴' : level === 'medium' ? '⚠️' : '⚠️';
-      status.textContent = score + '分 · ' + (level === 'high' ? '高风险' : level === 'medium' ? '中等' : '低风险');
-      item.className = 'check-item ' + (level === 'high' ? 'failed-high' : level === 'medium' ? 'failed-med' : 'failed-low');
-    }
-  }
 
   const breakdown = data.risk.breakdown || {};
   for (const id of order) {
