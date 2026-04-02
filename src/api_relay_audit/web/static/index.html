@@ -484,7 +484,6 @@ function showResults(data) {
     conversation_memory: '测试多轮对话中能否回忆早期信息，滑动窗口截断会被发现。',
     http_header_deep: '检查响应头是否有可疑的日志或转发标识，meta 信息泄露。',
   };
-  const breakdown = data.risk.breakdown || {};
 
   for (const id of order) {
     const item = breakdown[id];
