@@ -365,7 +365,7 @@ async def _run_audit_background(
         # CRITICAL: Clean up API key from memory
         await unregister_active_key(api_key)
         sm.cleanup_key(api_key)
-        adapter.close_sync()
+        await adapter.close()
 
 
 @app.get(
