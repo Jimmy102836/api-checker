@@ -38,6 +38,10 @@ class AuditStartRequest(BaseModel):
     token: str = Field(..., min_length=4, description="API key/token (in-memory only)")
     model: str = Field(default="claude-opus-4-6", description="Model name")
     endpoint_name: Optional[str] = Field(default=None, description="Display name")
+    skip_detectors: list[str] = Field(
+        default_factory=list,
+        description="Detector IDs to skip (e.g. ['context_truncation', 'semantic_truncation'])"
+    )
 
 
 class AuditStartResponse(BaseModel):
@@ -266,12 +270,13 @@ async def start_audit(
         endpoint_url=str(body.endpoint_url),
         api_key=body.token,
         model=body.model,
+        skip_detectors=list(body.skip_detectors),
     )
 
     return AuditStartResponse(
         session_id=session_id,
         status=AuditStatus.PENDING.value,
-        message="Audit job started. Poll /audit/{session_id}/status for progress.",
+        message=f"Audit job started ({len(body.skip_detectors)} detectors skipped). Poll /audit/{{session_id}}/status for progress.",
     )
 
 
@@ -280,6 +285,7 @@ async def _run_audit_background(
     endpoint_url: str,
     api_key: str,
     model: str,
+    skip_detectors: list[str] | None = None,
 ) -> None:
     """Run the audit in a background thread.
 
@@ -340,7 +346,7 @@ async def _run_audit_background(
         sm.update_job_status(session_id, AuditStatus.RUNNING, "Running detectors...")
 
         auditor = Auditor(cfg, Path("./reports"))
-        results = auditor.run()
+        results = auditor.run(skip_detectors=skip_detectors)
 
         if results:
             result = results[0]

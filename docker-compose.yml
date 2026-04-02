@@ -1,0 +1,21 @@
+version: '3'
+services:
+  api-checker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: api-checker
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./reports:/app/reports
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

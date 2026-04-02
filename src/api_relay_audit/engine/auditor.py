@@ -44,11 +44,15 @@ class Auditor:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.results: list[AuditResult] = []
 
-    def run(self, endpoint_name: str | None = None) -> list[AuditResult]:
+    def run(self, endpoint_name: str | None = None, skip_detectors: list[str] | None = None) -> list[AuditResult]:
         """Run the full audit suite.
 
         If endpoint_name is given, audit only that endpoint.
         Otherwise, audit all enabled endpoints.
+
+        Args:
+            endpoint_name: Filter to a specific endpoint by name/URL.
+            skip_detectors: List of detector IDs to skip (e.g. ["context_truncation", "semantic_truncation"]).
         """
         endpoints = self._get_target_endpoints(endpoint_name)
         if not endpoints:
@@ -57,7 +61,7 @@ class Auditor:
 
         for ep in endpoints:
             logger.info(f"Starting audit for endpoint: {ep.name or ep.url}")
-            result = self._audit_endpoint(ep)
+            result = self._audit_endpoint(ep, skip_detectors=skip_detectors)
             self.results.append(result)
             logger.info(
                 f"Audit complete for {ep.name or ep.url}: "
@@ -84,7 +88,7 @@ class Auditor:
         # Security engineer placed model in GlobalSettings
         return getattr(self.config.settings, "model", "claude-opus-4-6")
 
-    def _audit_endpoint(self, endpoint: EndpointConfig) -> AuditResult:
+    def _audit_endpoint(self, endpoint: EndpointConfig, skip_detectors: list[str] | None = None) -> AuditResult:
         """Run all enabled detectors against a single endpoint."""
         from api_relay_audit.adapter.auto_adapter import AutoAdapter
         from api_relay_audit.utils.canary import CanaryGenerator
@@ -107,8 +111,10 @@ class Auditor:
         detected_format = self._probe_format(adapter)
 
         # Run all detectors
+        skip = set(skip_detectors or [])
+        active_detectors = [d for d in ALL_DETECTOR_IDS if d not in skip]
         detector_results: list[DetectorResult] = []
-        for detector_id in ALL_DETECTOR_IDS:
+        for detector_id in active_detectors:
             try:
                 dr = self._run_detector(
                     detector_id, endpoint, adapter, canary_gen, token_est
