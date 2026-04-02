@@ -1,0 +1,43 @@
+[project]
+name = "api-relay-audit"
+version = "0.1.0"
+description = "Security auditing tool for AI API relay/proxy services"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "click>=8.1.0",
+    "httpx>=0.27.0",
+    "pyyaml>=6.0",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "aiohttp>=3.9.0",
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.27.0",
+    "slowapi>=0.1.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-httpx>=0.30.0",
+    "flask>=3.0.0",
+]
+
+[project.scripts]
+api-relay-audit = "scripts.audit:cli"
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src/*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore::pytest.PytestCollectionWarning",
+]

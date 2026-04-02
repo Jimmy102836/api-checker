@@ -1,0 +1,73 @@
+# API Relay Audit — Default Configuration
+# Copy this file to config.yaml and customize for your environment.
+
+version: "1.0"
+
+settings:
+  timeout: 120
+  max_retries: 3
+  retry_delay: 2
+  sleep_between_calls: 1
+  verbose: true
+  output_dir: "./reports"
+  default_format: "auto"
+
+endpoints:
+  # Minimal entry:
+  - url: "https://api.example.com/v1"
+    token: "${API_RELAY_TOKEN}"
+
+  # Example full entry:
+  # - name: "Primary Relay"
+  #   url: "https://relay.example.com/v1"
+  #   token: "${PRIMARY_TOKEN}"
+  #   format: "openai"
+  #   timeout: 180
+  #   enabled: true
+  #   tags:
+  #     - "production"
+
+test_cases:
+  model: "claude-opus-4-6"
+
+  detectors:
+    context_truncation:
+      enabled: true
+      coarse_steps: [50, 100, 200, 400, 600, 800]
+      binary_search_threshold: 20
+      canary_count: 5
+      max_context_k: 1000
+
+    token_injection:
+      enabled: true
+      injection_threshold: 100
+
+    hidden_injection:
+      enabled: true
+      injection_threshold: 50
+
+    instruction_override:
+      enabled: true
+
+    data_exfiltration:
+      enabled: true
+
+reports:
+  formats: ["json", "markdown"]
+  json:
+    pretty: true
+    include_raw_responses: false
+    include_timing: true
+  markdown:
+    include_http_headers: false
+    include_responses: "summary"
+  html:
+    theme: "light"
+    include_charts: true
+
+advanced:
+  use_curl_fallback: true
+  curl_path: "curl"
+  verify_ssl: true
+  proxy: null
+  custom_headers: {}

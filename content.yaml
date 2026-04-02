@@ -1,0 +1,16 @@
+site:
+  title: "API Checker"
+  subtitle: "中转 API 安全审计平台"
+  description: "检测中转 API 服务是否存在提示词注入、上下文截断、指令覆盖、数据窃取等作恶行为"
+
+landing:
+  title: "🛡️ API Checker"
+  subtitle: "检测中转 API 是否在暗中作恶"
+
+messages:
+  safe: "✅ 安全"
+  medium: "⚠️ 中等"
+  high: "🔴 高风险"
+  critical: "☠️ 极危险"
+
+footer: "API Checker · 开源安全审计工具"

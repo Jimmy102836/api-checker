@@ -1,0 +1,51 @@
+# Sample config for integration tests
+
+version: "1.0"
+
+settings:
+  timeout: 30
+  max_retries: 1
+  retry_delay: 1
+  sleep_between_calls: 0
+  verbose: true
+  output_dir: "./test_reports"
+  default_format: "auto"
+
+endpoints:
+  - name: "test-relay"
+    url: "http://localhost:18000/v1"
+    token: "test-token-12345"
+    format: "openai"
+    timeout: 10
+    enabled: true
+    tags: ["test"]
+
+test_cases:
+  model: "claude-opus-4-6"
+  detectors:
+    context_truncation:
+      enabled: true
+      coarse_steps: [10, 20]
+      binary_search_threshold: 5
+      canary_count: 3
+      max_context_k: 100
+    token_injection:
+      enabled: true
+      injection_threshold: 10
+    hidden_injection:
+      enabled: false
+    instruction_override:
+      enabled: false
+    data_exfiltration:
+      enabled: false
+
+reports:
+  formats: ["json"]
+  json:
+    pretty: true
+    include_raw_responses: false
+    include_timing: true
+
+advanced:
+  use_curl_fallback: false
+  verify_ssl: false

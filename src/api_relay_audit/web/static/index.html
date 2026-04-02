@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API Checker - 中转 API 安全审计</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1117; color: #e0e0e0; min-height: 100vh; }
+  .container { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
+
+  /* Header */
+  header { text-align: center; margin-bottom: 48px; }
+  header h1 { font-size: 2.2em; font-weight: 700; color: #fff; margin-bottom: 8px; }
+  header p { color: #888; font-size: 1.1em; }
+
+  /* Card */
+  .card { background: #1a1d27; border: 1px solid #2a2d3a; border-radius: 16px; padding: 32px; margin-bottom: 24px; }
+
+  /* Form */
+  .form-group { margin-bottom: 20px; }
+  label { display: block; font-size: 0.9em; font-weight: 600; color: #aaa; margin-bottom: 8px; }
+  input, select { width: 100%; padding: 12px 16px; background: #12141c; border: 1px solid #2a2d3a; border-radius: 8px; color: #fff; font-size: 1em; outline: none; transition: border 0.2s; }
+  input:focus, select:focus { border-color: #6366f1; }
+  input::placeholder { color: #555; }
+  .hint { font-size: 0.8em; color: #666; margin-top: 4px; }
+  .security-note { background: #1e2a1e; border: 1px solid #2a4a2a; border-radius: 8px; padding: 12px 16px; margin-bottom: 24px; font-size: 0.85em; color: #6a6; line-height: 1.6; }
+
+  /* Button */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 32px; background: #6366f1; color: #fff; border: none; border-radius: 10px; font-size: 1.05em; font-weight: 600; cursor: pointer; transition: all 0.2s; width: 100%; }
+  .btn:hover { background: #4f46e5; transform: translateY(-1px); }
+  .btn:disabled { background: #333; color: #666; cursor: not-allowed; transform: none; }
+  .btn.red { background: #ef4444; }
+  .btn.red:hover { background: #dc2626; }
+
+  /* Status */
+  #status { display: none; margin-top: 24px; }
+  .status-box { background: #12141c; border: 1px solid #2a2d3a; border-radius: 12px; padding: 24px; text-align: center; }
+  .status-box .spinner { font-size: 2em; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .status-box .message { margin-top: 12px; color: #aaa; }
+
+  /* Results */
+  #results { display: none; margin-top: 24px; }
+  /* Checklist */
+  #checkList { display: none; }
+  .check-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #12141c; border: 1px solid #2a2d3a; border-radius: 10px; margin-bottom: 8px; transition: all 0.3s; }
+  .check-item.passed { border-color: #14532d; background: #0a1a0f; }
+  .check-item.failed-high { border-color: #7f1d1d; background: #1a0808; }
+  .check-item.failed-med { border-color: #713f12; background: #1a1000; }
+  .check-item.failed-low { border-color: #14532d; background: #0a1a0f; }
+  .check-icon { font-size: 1.2em; width: 28px; text-align: center; flex-shrink: 0; }
+  .check-label { flex: 1; font-size: 0.95em; color: #ccc; }
+  .check-status { font-size: 0.82em; color: #888; min-width: 90px; text-align: right; }
+
+  .risk-badge { display: inline-block; padding: 12px 28px; border-radius: 50px; font-size: 1.3em; font-weight: 700; margin-bottom: 24px; }
+  .risk-low { background: #14532d; color: #4ade80; }
+  .risk-medium { background: #713f12; color: #fbbf24; }
+  .risk-high { background: #7f1d1d; color: #f87171; }
+  .risk-critical { background: #881337; color: #fb7185; }
+
+  .score-display { text-align: center; margin-bottom: 32px; }
+  .score-display .score { font-size: 4em; font-weight: 800; color: #fff; }
+  .score-display .total { font-size: 1.2em; color: #555; }
+  .score-display .label { font-size: 1.1em; color: #888; margin-top: 4px; }
+
+  /* Detection bars */
+  .det-item { margin-bottom: 16px; }
+  .det-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .det-name { font-size: 0.95em; font-weight: 600; color: #ccc; }
+  .det-score { font-size: 0.85em; font-weight: 700; }
+  .det-bar { height: 8px; background: #2a2d3a; border-radius: 4px; overflow: hidden; }
+  .det-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+
+  .det-low .det-fill { background: #22c55e; }
+  .det-medium .det-fill { background: #f59e0b; }
+  .det-high .det-fill { background: #ef4444; }
+  .det-critical .det-fill { background: #e11d48; }
+  .det-low .det-score { color: #4ade80; }
+  .det-medium .det-score { color: #fbbf24; }
+  .det-high .det-score { color: #f87171; }
+  .det-critical .det-score { color: #fb7185; }
+
+  /* Detail cards */
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 32px; }
+  .detail-card { background: #12141c; border: 1px solid #2a2d3a; border-radius: 10px; padding: 16px; }
+  .detail-card .dc-title { font-size: 0.8em; color: #666; margin-bottom: 4px; }
+  .detail-card .dc-value { font-size: 0.95em; color: #ccc; font-family: monospace; word-break: break-all; }
+
+  /* Actions */
+  .actions { display: flex; gap: 12px; margin-top: 24px; }
+  .actions .btn { flex: 1; }
+
+  /* Risk explanation */
+  .risk-explain { margin-top: 32px; padding: 20px; background: #12141c; border-radius: 12px; border: 1px solid #2a2d3a; }
+  .risk-explain h3 { color: #fff; margin-bottom: 12px; font-size: 1em; }
+  .risk-explain p { color: #888; font-size: 0.9em; line-height: 1.7; }
+  .risk-explain .warn { color: #fbbf24; }
+  .risk-explain .danger { color: #f87171; }
+  .risk-explain .safe { color: #4ade80; }
+
+  /* Footer */
+  footer { text-align: center; color: #444; font-size: 0.8em; margin-top: 48px; }
+
+  @media (max-width: 600px) {
+    .detail-grid { grid-template-columns: 1fr; }
+    header h1 { font-size: 1.6em; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>🛡️ API Relay Audit</h1>
+    <p>检测中转 API 服务是否在暗中作恶</p>
+  </header>
+
+  <!-- Input Form -->
+  <div class="card" id="formCard">
+    <div class="security-note">
+      🔒 <strong>安全提示：</strong>建议使用专用测试 API Key 进行审计。审计完成后可在 API 控制台删除该 Key。
+    </div>
+
+    <div style="background:#1a1d27;border:1px solid #2a2d3a;border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:0.85em;color:#888;line-height:1.6">
+      ⚠️ <strong style="color:#f59e0b">免责声明：</strong>检测结果仅供参考和辅助判断，不构成任何保证。不同模型、不同时间段的检测结果可能存在差异，建议结合实际情况综合判断。
+    </div>
+
+    <div class="form-group">
+      <label>中转 API 地址</label>
+      <input type="url" id="apiUrl" placeholder="https://api.your-relay.com/v1" value="https://api.example.com/v1">
+      <div class="hint">填入你要审计的中转服务地址</div>
+    </div>
+
+    <div class="form-group">
+      <label>API Key / Token</label>
+      <input type="password" id="apiToken" placeholder="sk-xxxx">
+      <div class="hint">API Key 仅在审计过程中存在内存里，审计结束后自动清除，不会保存到任何地方</div>
+    </div>
+
+    <div class="form-group">
+      <label>模型名称</label>
+      <input type="text" id="modelName" placeholder="gpt-4" value="gpt-4">
+      <div class="hint">在目标中转服务上使用的模型名称</div>
+    </div>
+
+    <button class="btn" id="startBtn" onclick="startAudit()">
+      🚀 开始审计
+    </button>
+  </div>
+
+  <!-- Loading Status -->
+  <div id="status">
+    <div class="status-box">
+      <div class="spinner">⏳</div>
+      <div class="message" id="statusMsg">正在连接服务器...</div>
+    </div>
+  </div>
+
+  <!-- Checklist -->
+  <div id="checkList" class="card" style="padding:20px">
+    <div style="font-size:0.9em;color:#888;margin-bottom:14px" id="checkProgress">检测进度：0 / 11</div>
+  </div>
+
+  <!-- Results -->
+  <div id="results">
+    <div class="card">
+      <div style="text-align:center">
+        <div id="riskBadge" class="risk-badge risk-low">安全</div>
+      </div>
+      <div class="score-display">
+        <div><span class="score" id="totalScore">0</span><span class="total"> / 100</span></div>
+        <div class="label" id="riskLabel">综合风险评分</div>
+      </div>
+
+      <div id="detections"></div>
+
+      <!-- Detailed findings -->
+      <div id="detailedFindings" style="margin-top:24px"></div>
+
+      <div class="detail-grid" id="detailGrid"></div>
+
+      <div class="actions">
+        <button class="btn" onclick="location.reload()">重新审计</button>
+        <button class="btn" onclick="downloadReport()">📥 下载报告</button>
+      </div>
+
+      <div class="risk-explain" id="riskExplain"></div>
+    </div>
+  </div>
+
+  <footer>
+    <div style="background:#1a1d27;border:1px solid #2a2d3a;border-radius:10px;padding:14px 18px;margin-bottom:16px;text-align:left">
+      <div style="font-size:0.85em;color:#888;line-height:1.7">
+        ⚠️ <strong style="color:#f59e0b">免责声明：</strong>检测结果仅供参考和辅助判断，不构成任何形式的保证。不同模型、不同对话上下文、不同时间段的检测结果可能存在差异。建议结合实际情况综合判断，中转服务的实际行为应以官方说明为准。
+      </div>
+    </div>
+    API Checker · 开源安全审计工具
+  </footer>
+</div>
+
+<script>
+const API_BASE = window.location.origin;
+let currentResult = null;
+let siteContent = null;
+
+// Load site content from API
+async function loadContent() {
+  try {
+    const res = await fetch(`${API_BASE}/api/content`);
+    siteContent = await res.json();
+    const s = siteContent.site || {};
+    const h1 = document.querySelector('header h1');
+    if (h1 && s.title) h1.textContent = s.title;
+    const sub = document.querySelector('header p');
+    if (sub && s.subtitle) sub.textContent = s.subtitle;
+  } catch(e) { /* use defaults */ }
+}
+loadContent();
+
+async function startAudit() {
+  const url = document.getElementById('apiUrl').value.trim();
+  const token = document.getElementById('apiToken').value.trim();
+  const model = document.getElementById('modelName').value.trim() || 'gpt-4';
+
+  if (!url) { alert('请输入中转 API 地址'); return; }
+  if (!token) { alert('请输入 API Key'); return; }
+
+  const btn = document.getElementById('startBtn');
+  btn.disabled = true;
+  btn.textContent = '审计进行中...';
+  showStatus('正在启动审计任务...');
+
+  try {
+    // Start audit
+    const res = await fetch(`${API_BASE}/audit/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ endpoint_url: url, token, model })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail?.detail || err.detail || '启动失败');
+    }
+
+    const { session_id } = await res.json();
+    pollStatus(session_id);
+  } catch (e) {
+    hideAll();
+    alert('启动失败: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = '🚀 开始审计';
+  }
+}
+
+async function pollStatus(sessionId) {
+  showStatus('正在启动各检测项...');
+  // Show checklist, hide form
+  document.getElementById('formCard').style.display = 'none';
+  document.getElementById('status').style.display = 'block';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('checkList').style.display = 'block';
+  document.getElementById('detections').style.display = 'none';
+
+  // Init all items as waiting
+  const order = ['instruction_override','token_injection','hidden_injection','context_truncation','data_exfiltration','semantic_truncation','instruction_priority','response_latency','response_format','conversation_memory','http_header_deep'];
+  for (const id of order) {
+    updateCheckItem(id, null, 0, 'low');
+  }
+
+  while (true) {
+    await new Promise(r => setTimeout(r, 2000));
+    const res = await fetch(`${API_BASE}/audit/${sessionId}/status`);
+    const data = await res.json();
+
+    if (data.status === 'running') {
+      document.getElementById('statusMsg').textContent =
+        data.progress_message || '审计进行中...';
+    }
+
+    if (data.status === 'completed') {
+      loadResults(sessionId);
+      return;
+    }
+    if (data.status === 'failed') {
+      hideAll();
+      alert('审计失败: ' + (data.error || '未知错误'));
+      document.getElementById('startBtn').disabled = false;
+      document.getElementById('startBtn').textContent = '🚀 开始审计';
+      return;
+    }
+  }
+}
+
+async function loadResults(sessionId) {
+  const res = await fetch(`${API_BASE}/audit/${sessionId}/result`);
+  currentResult = await res.json();
+  showResults(currentResult);
+}
+
+function showStatus(msg) {
+  hideAll();
+  document.getElementById('status').style.display = 'block';
+  document.getElementById('statusMsg').textContent = msg;
+}
+
+function hideAll() {
+  document.getElementById('status').style.display = 'none';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('formCard').style.display = 'block';
+}
+
+function showResults(data) {
+  hideAll();
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('formCard').style.display = 'none';
+
+  const score = data.risk.score;
+  const overall = data.risk.overall;
+
+  // Score & badge
+  document.getElementById('totalScore').textContent = score;
+  const badge = document.getElementById('riskBadge');
+  badge.textContent = { low: '✅ 安全', medium: '⚠️ 中等', high: '🔴 高风险', critical: '☠️ 极危险' }[overall] || overall;
+  badge.className = `risk-badge risk-${overall}`;
+
+  // ── Dynamic checklist ──
+  const checkList = document.getElementById('checkList');
+  const order = ['instruction_override','token_injection','hidden_injection','context_truncation','data_exfiltration','semantic_truncation','instruction_priority','response_latency','response_format','conversation_memory','http_header_deep'];
+  const labels = {
+    token_injection: '🔍 Token 注入',
+    hidden_injection: '🛡️ 隐藏提示词注入',
+    instruction_override: '⚠️ 指令覆盖',
+    context_truncation: '📏 上下文截断',
+    data_exfiltration: '🔓 数据窃取',
+    semantic_truncation: '🧠 语义截断',
+    instruction_priority: '🎯 指令优先级',
+    response_latency: '⏱️ 响应延迟',
+    response_format: '📋 响应格式',
+    conversation_memory: '🔗 对话记忆链',
+    http_header_deep: '🌐 HTTP头部深度',
+  };
+
+  checkList.innerHTML = order.map(id => `
+    <div class="check-item" id="check-${id}">
+      <div class="check-icon" id="check-icon-${id}">⏳</div>
+      <div class="check-label">${labels[id] || id}</div>
+      <div class="check-status" id="check-status-${id}">检测中...</div>
+    </div>
+  `).join('');
+
+  function updateCheckItem(id, passed, score, level) {
+    const icon = document.getElementById('check-icon-' + id);
+    const status = document.getElementById('check-status-' + id);
+    const item = document.getElementById('check-' + id);
+    if (!icon || !status || !item) return;
+    if (passed === null) {
+      icon.textContent = '⏳';
+      status.textContent = '检测中...';
+      item.className = 'check-item';
+    } else if (passed) {
+      icon.textContent = '✅';
+      status.textContent = score + '分 · 通过';
+      item.className = 'check-item passed';
+    } else {
+      icon.textContent = level === 'high' ? '🔴' : level === 'medium' ? '⚠️' : '⚠️';
+      status.textContent = score + '分 · ' + (level === 'high' ? '高风险' : level === 'medium' ? '中等' : '低风险');
+      item.className = 'check-item ' + (level === 'high' ? 'failed-high' : level === 'medium' ? 'failed-med' : 'failed-low');
+    }
+  }
+
+  const breakdown = data.risk.breakdown || {};
+  for (const id of order) {
+    const item = breakdown[id];
+    if (!item) continue;
+    const det = (data.detectors || []).find(d => d.id === id);
+    const passed = det ? (det.findings || []).some(f => f.passed) : false;
+    updateCheckItem(id, passed !== undefined ? passed : null, item.score, item.level);
+  }
+
+  // Hide checklist, show bar chart
+  checkList.style.display = 'none';
+  document.getElementById('detections').style.display = 'block';
+
+  // Detection bars
+  const dets = document.getElementById('detections');
+  dets.innerHTML = '';
+  const order = ['instruction_override','token_injection','hidden_injection','context_truncation','data_exfiltration','semantic_truncation','instruction_priority','response_latency','response_format','conversation_memory','http_header_deep'];
+  const labels = {
+    token_injection: '🔍 Token 注入',
+    hidden_injection: '🛡️ 隐藏提示词注入',
+    instruction_override: '⚠️ 指令覆盖',
+    context_truncation: '📏 上下文截断',
+    data_exfiltration: '🔓 数据窃取',
+    semantic_truncation: '🧠 语义截断',
+    instruction_priority: '🎯 指令优先级',
+    response_latency: '⏱️ 响应延迟',
+    response_format: '📋 响应格式',
+    conversation_memory: '🔗 对话记忆链',
+    http_header_deep: '🌐 HTTP头部深度',
+  };
+  const whatItMeans = {
+    token_injection: '每个请求被偷偷注入额外 token，中转商在消耗你的额度。差值越大，偷得越多。',
+    hidden_injection: '中转商在响应中附加了非你要求的指令（如翻译广告），这是注入行为。',
+    instruction_override: '你的 System Prompt 被忽略或替换了，中转商控制着模型的实际行为。',
+    context_truncation: '广告说支持长上下文，实际偷偷截断。边界越低，骗得越狠。',
+    data_exfiltration: '对话内容被持久化或跨会话泄漏，隐私被中转商保留或转发。',
+    semantic_truncation: '用语义方式验证上下文是否被截断，比精确标记更难欺骗。',
+    instruction_priority: '测试 system/developer/user 指令的优先级是否被中转商破坏。',
+    response_latency: '长上下文却秒回，说明中转商偷懒没真正处理你的完整输入。',
+    response_format: '要求特定 JSON 格式输出，被污染则说明中转商注入了额外内容。',
+    conversation_memory: '测试多轮对话中能否回忆早期信息，滑动窗口截断会被发现。',
+    http_header_deep: '检查响应头是否有可疑的日志或转发标识，meta 信息泄露。',
+  };
+  const breakdown = data.risk.breakdown || {};
+
+  for (const id of order) {
+    const item = breakdown[id];
+    if (!item) continue;
+    const pct = Math.min(100, item.score);
+    const level = item.level;
+    const div = document.createElement('div');
+    div.className = `det-item det-${level}`;
+    div.innerHTML = `
+      <div class="det-header">
+        <span class="det-name">${labels[id] || id}</span>
+        <span class="det-score">${item.score} 分</span>
+      </div>
+      <div class="det-bar"><div class="det-fill" style="width:${pct}%"></div></div>
+    `;
+    dets.appendChild(div);
+  }
+
+  // Detailed findings
+  const detailedDiv = document.getElementById('detailedFindings');
+  detailedDiv.innerHTML = '';
+  const findingsMap = {};
+  for (const det of (data.detectors || [])) {
+    findingsMap[det.id] = det;
+  }
+
+  const riskOrder = ['high', 'medium', 'low'];
+  for (const level of riskOrder) {
+    const levelIds = order.filter(id => (breakdown[id] || {}).level === level);
+    if (!levelIds.length) continue;
+
+    const section = document.createElement('div');
+    section.style.marginBottom = '24px';
+
+    const levelLabel = { high: '🔴 高风险项目详情', medium: '⚠️ 中等风险项目详情', low: '✅ 低风险项目（正常）' };
+    section.innerHTML = `<h3 style="color:#ccc;font-size:0.95em;margin-bottom:12px;border-bottom:1px solid #2a2d3a;padding-bottom:8px">${levelLabel[level]}</h3>`;
+
+    for (const id of levelIds) {
+      const det = findingsMap[id];
+      const item = breakdown[id] || {};
+      if (!det) continue;
+
+      const card = document.createElement('div');
+      card.style.marginBottom = '12px';
+      card.style.padding = '14px 16px';
+      card.style.background = level === 'high' ? '#1a0a0a' : level === 'medium' ? '#1a1400' : '#0a1a0a';
+      card.style.border = `1px solid ${level === 'high' ? '#7f1d1d' : level === 'medium' ? '#713f12' : '#14532d'}`;
+      card.style.borderRadius = '8px';
+
+      // Build findings summary
+      let findingsHTML = '';
+      for (const f of (det.findings || []).slice(0, 5)) {
+        const status = f.passed ? '✅' : '❌';
+        const resp = (f.response_text || '').slice(0, 120).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const error = f.details?.error || '';
+        findingsHTML += `<div style="font-size:0.85em;color:#999;margin:4px 0">
+          ${status} <b>${f.test_name}</b>
+          ${error ? `<span style="color:#f87171"> — ${error}</span>` : resp ? `<span style="color:#6a6"> — "${resp}"</span>` : ''}
+        </div>`;
+      }
+
+      // Raw data insights
+      const raw = det.raw_data || {};
+      let extra = '';
+      if (raw.delta_tokens !== undefined) extra += `注入量: +${raw.delta_tokens} tokens | `;
+      if (raw.boundary_range) extra += `截断边界: ${raw.boundary_range} | `;
+      if (raw.excess_tokens !== undefined) extra += `超量: ${raw.excess_tokens} tokens | `;
+      if (raw.overridden_tests?.length) extra += `被覆盖: ${raw.overridden_tests.join(', ')} | `;
+      if (raw.cross_session_leak) extra += `跨会话泄漏: 是 | `;
+      if (raw.suspicious_headers?.length) extra += `可疑头: ${raw.suspicious_headers.join(', ')} | `;
+      if (raw.latency_score !== undefined) extra += `延迟评分: ${raw.latency_score} | `;
+
+      card.innerHTML = `
+        <div style="font-weight:700;color:#fff;margin-bottom:6px">${labels[id] || id} <span style="font-weight:400;color:#888;font-size:0.85em">(${item.score}分)</span></div>
+        <div style="font-size:0.88em;color:#aaa;margin-bottom:8px;line-height:1.5">${whatItMeans[id] || det.summary || ''}</div>
+        ${extra ? `<div style="font-size:0.82em;color:#f59e0b;margin-bottom:6px">${extra.slice(0,-3)}</div>` : ''}
+        <details>
+          <summary style="cursor:pointer;font-size:0.82em;color:#666;user-select:none">📋 查看 ${det.findings?.length || 0} 项测试详情</summary>
+          <div style="margin-top:8px">${findingsHTML || '<div style="color:#555;font-size:0.85em">无测试数据</div>'}</div>
+        </details>
+      `;
+      section.appendChild(card);
+    }
+    detailedDiv.appendChild(section);
+  }
+
+  // Details
+  const grid = document.getElementById('detailGrid');
+  const a = data.audit;
+  grid.innerHTML = `
+    <div class="detail-card"><div class="dc-title">目标地址</div><div class="dc-value">${a.target_url}</div></div>
+    <div class="detail-card"><div class="dc-title">检测到的格式</div><div class="dc-value">${a.detected_format}</div></div>
+    <div class="detail-card"><div class="dc-title">模型</div><div class="dc-value">${a.model}</div></div>
+    <div class="detail-card"><div class="dc-title">审计耗时</div><div class="dc-value">${a.duration_seconds} 秒</div></div>
+  `;
+
+  // Risk explanation
+  const explain = document.getElementById('riskExplain');
+  if (overall === 'low') {
+    explain.innerHTML = `<h3>✅ 安全结论</h3><p class="safe">该中转服务未检测到明显的作恶行为，可以正常使用。</p>`;
+  } else if (overall === 'medium') {
+    explain.innerHTML = `<h3>⚠️ 中等风险</h3><p class="warn">检测到一些可疑行为，但不足以构成严重威胁。建议谨慎使用，观察一段时间后再做判断。</p>`;
+  } else {
+    explain.innerHTML = `<h3>🔴 高风险警告</h3><p class="danger">检测到严重的作恶行为！强烈建议停止使用该中转服务，更换为可信的提供商。</p>`;
+  }
+}
+
+function downloadReport() {
+  if (!currentResult) return;
+  const blob = new Blob([JSON.stringify(currentResult, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `audit_report_${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Check for existing session on load
+window.onload = () => {
+  // Auto-fill example
+};
+</script>
+</body>
+</html>
