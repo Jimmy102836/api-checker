@@ -471,19 +471,6 @@ function showResults(data) {
   // Detection bars
   const dets = document.getElementById('detections');
   dets.innerHTML = '';
-  const labels = {
-    token_injection: '🔍 Token 注入',
-    hidden_injection: '🛡️ 隐藏提示词注入',
-    instruction_override: '⚠️ 指令覆盖',
-    context_truncation: '📏 上下文截断',
-    data_exfiltration: '🔓 数据窃取',
-    semantic_truncation: '🧠 语义截断',
-    instruction_priority: '🎯 指令优先级',
-    response_latency: '⏱️ 响应延迟',
-    response_format: '📋 响应格式',
-    conversation_memory: '🔗 对话记忆链',
-    http_header_deep: '🌐 HTTP头部深度',
-  };
   const whatItMeans = {
     token_injection: '每个请求被偷偷注入额外 token，中转商在消耗你的额度。差值越大，偷得越多。',
     hidden_injection: '中转商在响应中附加了非你要求的指令（如翻译广告），这是注入行为。',
