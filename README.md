@@ -1,9 +1,12 @@
 # API Checker
 
 检测中转 API 服务是否存在**提示词注入**、**上下文截断**、**指令覆盖**、**数据窃取**等作恶行为的开源安全审计工具。
+
 代码小白第一次Vibe Coding 不足之处还望海涵
 
 [![Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+
+线上版：https://apichecker.wpi.edu.kg/
 
 ---
 
