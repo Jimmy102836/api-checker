@@ -12,6 +12,7 @@ services:
       - PYTHONUNBUFFERED=1
     volumes:
       - ./reports:/app/reports
+    command: python -m uvicorn api_relay_audit.web.main:app --host 0.0.0.0 --port 8000 --loop asyncio
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
