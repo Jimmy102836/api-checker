@@ -92,12 +92,18 @@ class AutoAdapter(RequestAdapter):
 
             body = adapter.build_request_body(req)
             path = adapter.endpoint_path
-            url = f"{self.base_url}{path}"
+            # Avoid double /v1/ in URL: if base_url ends with /v1 and path starts with /v1, strip one
+            base = self.base_url.rstrip("/")
+            if path.startswith("/v1") and base.endswith("/v1"):
+                base = base[:-3]  # remove trailing /v1
+            url = f"{base}{path}"
+            logger.warning(f"[_probe] Trying {adapter.format_name}: {req.model} -> {url}")
 
             try:
                 client = await self._get_client()
                 resp = await client.post(url, json=body, headers=headers)
                 elapsed = time.time() - start
+                logger.warning(f"[_probe] {adapter.format_name} response: status={resp.status_code} body={resp.text[:200]}")
 
                 if resp.status_code == 200:
                     raw = resp.json()
@@ -126,7 +132,7 @@ class AutoAdapter(RequestAdapter):
                 logger.warning(f"SSL error on {adapter.format_name}: {e}")
                 continue
             except Exception as e:
-                logger.debug(f"{adapter.format_name} probe failed: {e}")
+                logger.warning(f"[_probe] {adapter.format_name} probe exception: {e}")
                 continue
 
         raise RuntimeError("All format probes failed. Check endpoint URL and API key.")
@@ -142,7 +148,11 @@ class AutoAdapter(RequestAdapter):
                 headers["Authorization"] = f"Bearer {self.api_key}"
 
             body = self._detected_adapter.build_request_body(req)
-            url = f"{self.base_url}{self._detected_adapter.endpoint_path}"
+            path = self._detected_adapter.endpoint_path
+            base = self.base_url.rstrip("/")
+            if path.startswith("/v1") and base.endswith("/v1"):
+                base = base[:-3]
+            url = f"{base}{path}"
 
             client = await self._get_client()
             resp = await client.post(url, json=body, headers=headers)
