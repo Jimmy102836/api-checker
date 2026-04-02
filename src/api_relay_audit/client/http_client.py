@@ -115,7 +115,11 @@ class HTTPClient:
         """Synchronous POST fallback."""
         import asyncio
 
-        return asyncio.run(self.post(path, body, headers))
+        try:
+            loop = asyncio.get_event_loop()
+            return loop.run_until_complete(self.post(path, body, headers))
+        except RuntimeError:
+            return asyncio.run(self.post(path, body, headers))
 
     def _curl_post(self, url: str, body: dict, headers: dict) -> dict:
         """Fallback to curl subprocess for SSL issues."""

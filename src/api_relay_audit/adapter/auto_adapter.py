@@ -10,6 +10,9 @@ from typing import Any
 
 import httpx
 
+import nest_asyncio
+nest_asyncio.apply()
+
 from api_relay_audit.adapter.base import (
     NormalizedRequest,
     NormalizedResponse,
@@ -167,9 +170,10 @@ class AutoAdapter(RequestAdapter):
     def call(self, req: NormalizedRequest) -> NormalizedResponse:
         """Synchronous wrapper — runs the async call in an event loop."""
         try:
-            loop = asyncio.get_running_loop()
+            loop = asyncio.get_event_loop()
             return loop.run_until_complete(self.call_async(req))
         except RuntimeError:
+            # No event loop — create one
             return asyncio.run(self.call_async(req))
 
     def set_api_key(self, api_key: str) -> None:
@@ -177,9 +181,9 @@ class AutoAdapter(RequestAdapter):
         self.api_key = api_key
 
     def close_sync(self) -> None:
-        """Synchronous close — cancels the event loop if needed."""
+        """Synchronous close."""
         try:
-            loop = asyncio.get_running_loop()
+            loop = asyncio.get_event_loop()
             loop.run_until_complete(self.close())
         except RuntimeError:
             asyncio.run(self.close())
