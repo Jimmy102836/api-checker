@@ -19,7 +19,7 @@ RUN mkdir -p reports
 EXPOSE 8000
 
 # 环境变量
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app/src
 ENV PYTHONUNBUFFERED=1
 
 # 启动命令
