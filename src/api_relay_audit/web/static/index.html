@@ -471,7 +471,6 @@ function showResults(data) {
   // Detection bars
   const dets = document.getElementById('detections');
   dets.innerHTML = '';
-  const order = ['instruction_override','token_injection','hidden_injection','context_truncation','data_exfiltration','semantic_truncation','instruction_priority','response_latency','response_format','conversation_memory','http_header_deep'];
   const labels = {
     token_injection: '🔍 Token 注入',
     hidden_injection: '🛡️ 隐藏提示词注入',
