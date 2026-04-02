@@ -1,0 +1,22 @@
+NOTICE
+======
+
+This project includes software developed by Toby Bridges (toby-bridges/api-relay-audit)
+that is licensed under the MIT License.
+
+The MIT License original work is available at:
+https://github.com/toby-bridges/api-relay-audit
+
+This project has been substantially extended and modified, including:
+- Additional 6 detection algorithms (T6-T11)
+- Web UI and admin dashboard
+- FastAPI REST backend
+- Asyncio concurrent architecture
+- Semantic truncation detection
+- Instruction priority detection
+- Response latency anomaly detection
+- Format fingerprint detection
+- Conversation memory chain detection
+- HTTP header deep inspection
+
+The Apache License 2.0 applies to all modifications and new code in this project.

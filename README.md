@@ -1,201 +1,140 @@
-# API Relay Audit
+# API Checker
 
-检测中转 API 服务是否在暗中注入提示词、截断上下文、覆盖指令、泄漏数据的审计工具。
+检测中转 API 服务是否存在**提示词注入**、**上下文截断**、**指令覆盖**、**数据窃取**等作恶行为的开源安全审计工具。
 
-## 功能
+[![Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-- 🔍 **上下文截断检测** — 验证中转商是否广告虚标上下文窗口
-- 🛡️ **隐藏提示词注入检测** — 揪出偷偷追加的黑指令
-- ⚖️ **指令覆盖检测** — 验证 System Prompt 是否被替换
-- 📊 **数据窃取检测** — 检查对话内容是否被持久化/泄漏
-- 📈 **风险评分** — 0-100 分 + 四级风险等级
-
-## 安装
-
-```bash
-git clone https://github.com/your-repo/api-relay-audit.git
-cd api-relay-audit
-pip install -e .
-```
-
-或使用 pip 安装：
-
-```bash
-pip install api-relay-audit
-```
-
-### 环境要求
-
-- Python 3.10+
-- 网络环境可访问目标中转 API
-- curl（可选，用于 fallback 模式）
+---
 
 ## 快速开始
 
-1. 编辑 `config.yaml`，填入中转 API URL 和 Token
-2. 运行审计：
+### 网页版（推荐）
 
 ```bash
-python scripts/audit.py --config config.yaml
+pip install -r requirements.txt
+ADMIN_PASSWORD=你的密码 python -m uvicorn api_relay_audit.web.main:app --host 0.0.0.0 --port 8000
 ```
 
-3. 查看报告：
+然后打开 http://localhost:8000 即可使用。
+
+### 命令行版
 
 ```bash
-ls ./reports/
-cat ./reports/primaryrelay_20260402T120000Z.md
+pip install -r requirements.txt
+python scripts/audit.py audit --config config.yaml
 ```
-
-## 支持的 API 格式
-
-| 格式 | 说明 |
-|------|------|
-| OpenAI 兼容格式 | `/v1/chat/completions` 接口的中转服务 |
-| Anthropic 兼容格式 | `/v1/messages` 接口的中转服务 |
-| 自动探测 (auto) | 自动识别目标 API 的协议格式 |
-
-## CLI 参数
-
-| 参数 | 说明 | 示例 |
-|------|------|------|
-| `--config`, `-c` | 配置文件路径 | `-c config.yaml` |
-| `--endpoint`, `-e` | 指定要审计的 endpoint（名称或 URL） | `-e "Primary Relay"` |
-| `--token`, `-t` | API Token（覆盖配置文件） | `-t "sk-xxxx"` |
-| `--model`, `-m` | 指定模型名称 | `-m claude-opus-4-6` |
-| `--format` | 强制 API 格式（auto/openai/anthropic） | `--format openai` |
-| `--output-dir`, `-o` | 报告输出目录 | `-o ./reports` |
-| `--detectors` | 仅运行指定检测器（可多次使用） | `--detectors token_injection` |
-| `--skip-detectors` | 跳过指定检测器 | `--skip-detectors context_truncation` |
-| `--timeout` | 请求超时时间（秒） | `--timeout 180` |
-| `--report-format` | 输出报告格式（json/markdown/html） | `--report-format markdown` |
-| `--json-only` | 仅输出 JSON 报告 | `--json-only` |
-| `-v`, `--verbose` | 详细输出（DEBUG 日志） | `-v` |
-| `-q`, `--quiet` | 静默模式（仅显示错误） | `-q` |
-
-### 常用命令示例
-
-```bash
-# 审计所有 endpoint
-python scripts/audit.py -c config.yaml
-
-# 审计指定 endpoint
-python scripts/audit.py -c config.yaml -e "Primary Relay"
-
-# 使用 OpenAI 格式审计
-python scripts/audit.py -c config.yaml --format openai -t "sk-test"
-
-# 仅运行上下文截断检测
-python scripts/audit.py -c config.yaml --detectors context_truncation
-
-# 静默模式 + 仅 JSON 输出
-python scripts/audit.py -c config.yaml -q --json-only
-
-# 验证配置文件
-python scripts/audit.py config-test -c config.yaml
-```
-
-## 输出报告示例
-
-审计完成后，会在 `reports/` 目录下生成两份报告：
-
-**Markdown 报告**（供人阅读）：
-
-```markdown
-# API Relay Security Audit Report
-
-**Generated**: 2026-04-02 12:00 UTC
-**Target**: `https://api.example.com/v1`
-**Target Name**: Primary Relay
-**Model**: `claude-opus-4-6`
-**Detected Format**: OpenAI-compatible
-**Duration**: 45.2s
-**Overall Risk**: ⚠️ MEDIUM
 
 ---
 
-## Risk Breakdown
+## 功能特性
 
-| Detector | Risk Level | Score |
-|----------|-------------|-------|
-| token_injection | ⚠️ MEDIUM | 45 |
-| hidden_injection | ✅ LOW | 10 |
-| instruction_override | ✅ LOW | 10 |
-| context_truncation | ✅ LOW | 10 |
-| data_exfiltration | ✅ LOW | 10 |
+### 11 个检测项（原有 7 项 → 扩展至 11 项）
 
-**Overall Score**: 17 / 100
+| # | 检测项 | 说明 |
+|---|--------|------|
+| 1 | 🔍 Token 注入检测 | 发现每个请求被偷偷多注入的 token 数量 |
+| 2 | 🛡️ 隐藏提示词注入 | 揪出响应中附加的非用户指令（如广告/翻译） |
+| 3 | ⚠️ 指令覆盖检测 | 验证 System Prompt 是否被忽略或替换 |
+| 4 | 📏 上下文截断检测 | Canary Marker + 二分搜索，精确定位截断边界 |
+| 5 | 🔓 数据窃取检测 | 对话内容是否被持久化或跨会话泄漏 |
+| 6 | 🧠 语义截断检测 | 用语义埋点（非精确标记）检测截断，无法被白盒规避 |
+| 7 | 🎯 指令优先级检测 | 测试 system/developer/user 优先级是否被破坏 |
+| 8 | ⏱️ 响应延迟异常检测 | 长上下文秒响应说明中转商偷懒没处理 |
+| 9 | 📋 响应格式指纹检测 | 要求 JSON 格式输出，被污染则暴露注入 |
+| 10 | 🔗 对话记忆链检测 | 第 N 轮能否引用第 1 轮信息，滑动窗口截断无处遁形 |
+| 11 | 🌐 HTTP 头部深度检测 | 响应头 meta 信息注入检测 |
+
+### 支持的 API 格式
+- OpenAI `/v1/chat/completions` 兼容
+- Anthropic `/v1/messages` 兼容
+- 自动探测（无需手动指定）
+
+### 风险评分体系
+- **0–30 分**：✅ 安全
+- **31–60 分**：⚠️ 中等风险
+- **61–80 分**：🔴 高风险
+- **81–100 分**：☠️ 极危险
+
+---
+
+## 与原项目的对比
+
+本项目基于 [toby-bridges/api-relay-audit](https://github.com/toby-bridges/api-relay-audit)（MIT License）开发，在其基础上进行了**大幅扩展**：
+
+| 维度 | 原项目 | 本项目 |
+|------|--------|--------|
+| 检测算法 | 7 项 | **11 项**（新增 6 个扩展检测器）|
+| 用户界面 | 无（仅 CLI） | **Web UI + 管理后台** |
+| API 接入 | 仅命令行 | **FastAPI + REST 接口** |
+| 上下文检测 | 精确 Canary | **Canary + 语义埋点双重检测** |
+| 并发支持 | 单线程 | **asyncio 高并发** |
+| 报告格式 | Markdown | **JSON + Markdown + 可视化网页** |
+| 配置管理 | 手工编辑 YAML | **网页后台可视化配置** |
+| 测试覆盖 | 部分 | **140 个单元测试 + 靶机** |
+
+### 新增的 6 个检测器说明
+
+**语义截断检测（Semantic Truncation）**
+- 原项目用精确 canary 字符串，中转商可检测后故意保留
+- 本项目改用语义埋点（"我的幸运数字是 42"），靠语义相似度判断，无法规避
+
+**指令优先级检测（Instruction Priority）**
+- 利用 `system > developer > assistant > user` 优先级，构造矛盾指令对验证
+
+**响应延迟异常检测（Response Latency）**
+- 测量 `time_elapsed`，长上下文但极快响应 = 偷懒不处理
+
+**响应格式指纹检测（Format Fingerprint）**
+- 要求模型输出特定 JSON 格式，注入会破坏格式
+
+**对话记忆链检测（Memory Chain）**
+- 测试第 N 轮能否引用第 1 轮信息，滑动窗口截断可被发现
+
+**HTTP 头部深度检测（Header Deep）**
+- 检查响应头是否有可疑的 `X-Query-Log`、`X-Forwarded-For` 等 meta 注入
 
 ---
 
-## Token Injection
+## 项目结构
 
-**Status**: ⚠️ MEDIUM — Detected 120 extra tokens injected
-
-| Test | Input Tokens | Output Tokens | Passed |
-|------|-------------|---------------|--------|
-| small_prompt_test | 50 | 170 | ❌ |
-
----
-
-## Instruction Override
-
-**Status**: ✅ LOW — All instructions properly respected
-
-| Test | Input Tokens | Output Tokens | Passed |
-|------|-------------|---------------|--------|
-| cat_test | 30 | 25 | ✅ |
-| identity_test | 40 | 30 | ✅ |
-
----
-*Report generated by api-relay-audit v1.0.0*
+```
+api-checker/
+├── src/api_relay_audit/
+│   ├── adapter/          # OpenAI + Anthropic 双格式自动适配
+│   ├── detectors/        # 11 个检测器（T1-T11）
+│   ├── engine/           # 审计编排 + RiskCalculator
+│   ├── reports/          # JSON + Markdown 导出
+│   ├── utils/            # Canary 生成器 + Token 估算
+│   └── web/               # FastAPI 服务 + 网页 + 管理后台
+├── scripts/               # CLI 入口
+├── tests/                 # 140 个单元测试 + 靶机
+├── docs/                  # 报告解读指南
+├── README.md
+├── LICENSE                # Apache 2.0
+├── NOTICE                 # 原项目归属声明
+└── content.yaml          # 网站内容配置
 ```
 
-**JSON 报告**（供程序处理）：
+---
 
-```json
-{
-  "version": "1.0",
-  "audit": {
-    "target_url": "https://api.example.com/v1",
-    "target_name": "Primary Relay",
-    "model": "claude-opus-4-6",
-    "detected_format": "openai",
-    "timestamp": "2026-04-02T12:00:00Z",
-    "duration_seconds": 45.2
-  },
-  "risk": {
-    "overall": "medium",
-    "score": 17,
-    "breakdown": {
-      "token_injection": {"level": "medium", "score": 45},
-      "hidden_injection": {"level": "low", "score": 10}
-    }
-  },
-  "detectors": [...]
-}
-```
+## 协议说明
 
-## 风险等级说明
+### 本项目：Apache 2.0
 
-| 等级 | 分值范围 | 含义 | 建议 |
-|------|---------|------|------|
-| ✅ LOW | 0–30 | 安全，未检测到明显问题 | 可放心使用 |
-| ⚠️ MEDIUM | 31–60 | 存在轻微异常 | 使用时注意观察 |
-| 🔴 HIGH | 61–80 | 严重问题 | 不建议使用 |
-| 💀 CRITICAL | 81–100 | 极度危险 | 立即停用 |
+本项目采用 [Apache License 2.0](LICENSE) 开源，可自由用于商业和非商业用途。
 
-## 退出码
+### 原项目归属
 
-| 退出码 | 含义 |
-|--------|------|
-| 0 | 所有 endpoint 均安全（LOW risk） |
-| 1 | 至少一个 endpoint 存在 MEDIUM 风险 |
-| 2 | 至少一个 endpoint 存在 HIGH 或 CRITICAL 风险 |
+本项目参考并引入了 [toby-bridges/api-relay-audit](https://github.com/toby-bridges/api-relay-audit)（MIT License）的以下设计思想：
+- 模块化的检测器架构（Plugin 模式）
+- Canary Marker 上下文检测思路
+- `/v1/chat/completions` 和 `/v1/messages` 双格式兼容方案
+- 7 步审计流程框架
 
-## 配置说明
+详细归属声明请参阅 [NOTICE](NOTICE) 文件。
 
-详细配置项说明请参考 [docs/CONFIG.md](docs/CONFIG.md)。
+---
 
-## 报告解读指南
+## 使用注意
 
-各检测指标的详细含义和风险判断标准请参考 [docs/REPORT_GUIDE.md](docs/REPORT_GUIDE.md)。
+⚠️ **免责声明**：检测结果仅供参考和辅助判断，不构成任何形式的保证。不同模型、不同对话上下文、不同时间段的检测结果可能存在差异。建议结合实际情况综合判断，中转服务的实际行为应以官方说明为准。
